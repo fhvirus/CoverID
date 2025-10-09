@@ -21,7 +21,11 @@ tar -xvzf covers80.tgz
 
 ## File Structure
 
+- `algorithms.py`: File for matching algorithms.
+- `utils.py`: Functions for loading data and other useful functions.
+- `main.py`: File for main logic.
 
+To add a algorithm, place it in algorithms and change the compare function that `main.py` uses.
 
 
 ## Reference
