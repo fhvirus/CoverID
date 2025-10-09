@@ -1,3 +1,7 @@
+# covers80 dataset
+covers80.tgz
+coversongs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
