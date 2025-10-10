@@ -17,7 +17,11 @@ Please download and extract the dataset.
 wget http://labrosa.ee.columbia.edu/projects/coversongs/covers80/covers80.tgz
 tar -xvzf covers80.tgz
 ```
-
+ffmpeg packet is needed in order to run this project. Install with:
+```bash
+sudo apt update
+sudo apt install ffmpeg=7:6.1.1-3ubuntu5
+```
 
 ## File Structure
 
