@@ -2,6 +2,7 @@ import pydub
 import numpy as np
 import librosa
 
+
 def dummy_compare(a: pydub.AudioSegment,
                   b: pydub.AudioSegment) -> float:
     """Given two audio, returns their similarity"""
@@ -34,9 +35,24 @@ def compare(a: pydub.AudioSegment,
 
     # Compute similarity matrix
     D = similarity_matrix(a_chroma, b_chroma)
+    #D = D_matrix(S)
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
+
+    return similarity_score
+
+def compare_features(og_features,
+            cover_features) -> float:
+    """Given two audio, returns their similarity"""
+
+    # Compute similarity matrix
+    S = similarity_matrix(og_features, cover_features)
+    D = D_matrix(S)
+
+    # The similarity score can be defined as the maximum value in the similarity matrix
+    similarity_score = np.max(D)
+    #print(f"Similarity score: {similarity_score}")
 
     return similarity_score
 
@@ -83,7 +99,9 @@ def similarity_matrix(x_chroma, y_chroma) -> np.ndarray:
     D : np.ndarray. Similarity matrix (shape: (n_frames_x, n_frames_y)).
     """
     S = np.dot(x_chroma.T, y_chroma)  # Compute the dot product between feature vectors
+    return S
     
+def D_matrix(S):
     D = np.zeros((S.shape[0]+1, S.shape[1]+1))  # D matrix (start with idx 1)
     for i in range(1, S.shape[0]+1):
         for j in range(1, S.shape[1]+1):
