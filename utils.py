@@ -65,7 +65,7 @@ def match_one_song_features(features_list,
         # Get the sample rates
         sr_song = song.frame_rate
         # Compute chroma features for both audio signals
-        song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=1024, variation="none")
+        song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=512, variation="cens", l=21, d=5)
         score = compare_features(features, song_chroma)
         results.append((score, name))
     print(results)
@@ -80,15 +80,17 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
     truth_list = []
     matched_list = []
     features_list = []
-    for name, data in database.items():
+    print('Computing features dataset...')
+    for name, data in tqdm(database.items()):
         data = data.set_channels(1) if data.channels > 1 else data
         data_samples = np.array(data.get_array_of_samples()).astype(np.float32)
         data_samples /= np.iinfo(data.array_type).max
         sr = data.frame_rate
-        features_list.append((chroma_features(data_samples, sr, hop_time=10, n_fft=1024, variation="none"),name))
+        features_list.append((chroma_features(data_samples, sr, hop_time=10, n_fft=512, variation="cens", l=21, d=5),name))
     i = 0
-    for name, song in covers.items():
-        if i >= 5:
+    print('Matching covers to original songs...')
+    for name, song in tqdm(covers.items()):
+        if i >= 15:
             break
         _, matched_name = match_one_song_features(features_list, song)
         truth_list.append(name)
