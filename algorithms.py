@@ -28,9 +28,9 @@ def compare(a: pydub.AudioSegment,
     sr_a = a.frame_rate
     sr_b = b.frame_rate
 
-    # Compute chroma features for both audio signals
-    a_chroma = chroma_features(a_samples, sr_a, hop_time=10, n_fft=2048, variation="none")
-    b_chroma = chroma_features(b_samples, sr_b, hop_time=10, n_fft=2048, variation="none")
+    # Compute chroma features for both audio signals (optimized for speed)
+    a_chroma = chroma_features(a_samples, sr_a, hop_time=50, n_fft=1024, variation="none")
+    b_chroma = chroma_features(b_samples, sr_b, hop_time=50, n_fft=1024, variation="none")
     print(f"get chroma features: {a_chroma.shape}, {b_chroma.shape}")
 
     # Compute similarity matrix
@@ -53,6 +53,48 @@ def compare_features(og_features,
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
     #print(f"Similarity score: {similarity_score}")
+
+    return similarity_score
+
+def compare_beat_sync(a: pydub.AudioSegment,
+                      b: pydub.AudioSegment,
+                      beats_per_frame: int = 4) -> float:
+    """
+    Compare two audio segments using beat-synchronous chroma features.
+    
+    Parameters:
+    a, b: pydub.AudioSegment objects to compare
+    beats_per_frame: number of beats per chroma frame (4 = quarter beats, 12 = 12th beats)
+    
+    Returns:
+    similarity_score: float similarity score
+    """
+    from beat_chroma import extract_beat_chroma
+    
+    # Convert pydub AudioSegment to numpy array
+    a_samples = np.array(a.get_array_of_samples()).astype(np.float32)
+    b_samples = np.array(b.get_array_of_samples()).astype(np.float32)
+
+    # Normalize audio samples to the range [-1, 1]
+    a_samples /= np.iinfo(a.array_type).max
+    b_samples /= np.iinfo(b.array_type).max
+
+    # Get the sample rates
+    sr_a = a.frame_rate
+    sr_b = b.frame_rate
+
+    # Extract beat-synchronous chroma features
+    a_chroma = extract_beat_chroma(a_samples, sr_a, beats_per_frame=beats_per_frame)
+    b_chroma = extract_beat_chroma(b_samples, sr_b, beats_per_frame=beats_per_frame)
+    
+    print(f"Beat-sync chroma features: {a_chroma.shape}, {b_chroma.shape}")
+
+    # Compute similarity matrix
+    S = similarity_matrix(a_chroma, b_chroma)
+    D = D_matrix(S)
+
+    # The similarity score can be defined as the maximum value in the similarity matrix
+    similarity_score = np.max(D)
 
     return similarity_score
 
@@ -80,8 +122,8 @@ def chroma_features(x: np.ndarray, sr: int, hop_time:int=10, n_fft:int=2048, var
         # todo
         features = librosa.feature.chroma_stft(y=x, sr=sr, hop_length=hop_length, n_fft=n_fft) # Revise and change parameters
     elif variation == "norm":
-        # todo
-        features = librosa.feature.chroma_cqt(y=x, sr=sr, hop_length=hop_length, n_fft=n_fft) # Revise and change parameters
+        # chroma_cqt doesn't use n_fft parameter
+        features = librosa.feature.chroma_cqt(y=x, sr=sr, hop_length=hop_length) # Revise and change parameters
     elif variation == "cens":
         # todo
         features_no_dw = librosa.feature.chroma_cens(y=x, sr=sr, hop_length=hop_length, win_len_smooth = l) #, l=l, d=d) # Revise and change parameters
@@ -89,6 +131,15 @@ def chroma_features(x: np.ndarray, sr: int, hop_time:int=10, n_fft:int=2048, var
         features = features_no_dw[:, ::d]    
     else:
         raise ValueError(f"Invalid variation '{variation}'. Must be one of ['none', 'norm', 'cens']")
+    return features
+
+def chroma_features_fast(x: np.ndarray, sr: int, hop_time:int=100, n_fft:int=512):
+    """
+    Fast version of chroma features with reduced resolution.
+    Uses larger hop_time and smaller FFT for speed.
+    """
+    hop_length = int(sr * hop_time / 1000)  # Convert hop time from ms to samples
+    features = librosa.feature.chroma_stft(y=x, sr=sr, hop_length=hop_length, n_fft=n_fft)
     return features
 
 def similarity_matrix(x_chroma, y_chroma) -> np.ndarray:
