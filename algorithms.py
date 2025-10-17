@@ -34,8 +34,8 @@ def compare(a: pydub.AudioSegment,
     print(f"get chroma features: {a_chroma.shape}, {b_chroma.shape}")
 
     # Compute similarity matrix
-    S = similarity_matrix(a_chroma, b_chroma)
-    D = D_matrix(S)
+    S = similarity_matrix(a_chroma, b_chroma, norm=True)
+    D = smith_waterman(S,0.5)
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -47,8 +47,8 @@ def compare_features(og_features,
     """Given two audio, returns their similarity"""
 
     # Compute similarity matrix
-    S = similarity_matrix(og_features, cover_features)
-    D = D_matrix(S)
+    S = similarity_matrix(og_features, cover_features, norm=True)
+    D = smith_waterman(S,0.5)
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -90,8 +90,8 @@ def compare_beat_sync(a: pydub.AudioSegment,
     print(f"Beat-sync chroma features: {a_chroma.shape}, {b_chroma.shape}")
 
     # Compute similarity matrix
-    S = similarity_matrix(a_chroma, b_chroma)
-    D = D_matrix(S)
+    S = similarity_matrix(a_chroma, b_chroma, norm=True)
+    D = smith_waterman(S,0.5)
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -142,7 +142,13 @@ def chroma_features_fast(x: np.ndarray, sr: int, hop_time:int=100, n_fft:int=512
     features = librosa.feature.chroma_stft(y=x, sr=sr, hop_length=hop_length, n_fft=n_fft)
     return features
 
-def similarity_matrix(x_chroma, y_chroma) -> np.ndarray:
+def normalize_columns(mat: np.ndarray) -> np.ndarray:
+    norms = np.linalg.norm(mat, axis=0, keepdims=True)
+    # Evitem divisió per zero:
+    norms[norms == 0] = 1
+    return mat / norms
+
+def similarity_matrix(x_chroma, y_chroma, norm:False) -> np.ndarray:
     """
     Compute a similarity matrix from feature sequences. P
     x_chroma : np.ndarray. Chroma feature matrix for audio x (shape: (n_features, n_frames_x)).
@@ -150,7 +156,12 @@ def similarity_matrix(x_chroma, y_chroma) -> np.ndarray:
     Returns:
     D : np.ndarray. Similarity matrix (shape: (n_frames_x, n_frames_y)).
     """
+    if norm:
+        x_chroma = normalize_columns(x_chroma)
+        y_chroma = normalize_columns(y_chroma)
+    
     S = np.dot(x_chroma.T, y_chroma)  # Compute the dot product between feature vectors
+    #S_smooth = librosa.segment.path_enhance(S, 51, window='hann', n_filters=7) # rev, trying to see somthing
     return S
 
 @njit(cache=True, fastmath=True)  
@@ -178,3 +189,14 @@ def D_matrix_optimal(S):
             left
         ]))
     return D
+
+@njit(cache=True, fastmath=True)
+def smith_waterman(S, d):
+    D = np.zeros((S.shape[0]+1, S.shape[1]+1))  # D matrix (start with idx 1)
+    for i in range(1, S.shape[0]+1):
+        for j in range(1, S.shape[1]+1):
+            D[i, j] = max(0,
+              D[i-1, j-1] + S[i-1, j-1],
+              D[i-1, j] - d,
+              D[i, j-1] - d)
+    return D[1:, 1:]  # Return the similarity matrix without the extra row and column

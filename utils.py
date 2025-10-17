@@ -17,11 +17,11 @@ def visualize_similarity_analysis(original_name, cover_name, original_chroma, co
     original_chroma, cover_chroma: frame-synchronous chroma feature matrices
     save_plots: whether to save plots to files
     """
-    from algorithms import similarity_matrix, D_matrix
+    from algorithms import similarity_matrix, D_matrix, smith_waterman
     
     # Compute similarity matrices
-    S = similarity_matrix(original_chroma, cover_chroma)  # Raw dot product
-    D = D_matrix(S)  # Dynamic programming matrix
+    S = similarity_matrix(original_chroma, cover_chroma, norm= True)  # Raw dot product
+    D = smith_waterman(S,0.5)  # Dynamic programming matrix
     
     # Create subplot layout
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
@@ -183,12 +183,18 @@ def load_covers80(datadir: str):
     name_list = [ s.split('/')[0] for s in list1 ]
     assert name_list == [ s.split('/')[0] for s in list2 ], 'Song lists are not identical'
 
-    def load_songs_from_list(song_list: list[str]):
+    def load_songs_from_list(song_list: list[str], shift: int = 0):
         songs = {}
         print('Loading song list...')
         for song in tqdm(song_list):
             name = song.split('/')[0]
             data = pydub.AudioSegment.from_file(os.path.join(datadir, song) + '.mp3')
+            if shift != 0:
+                if shift > 0: # added for testing (shift songs in time). Can be removed for final code
+                    data = data[shift:] + pydub.AudioSegment.silent(duration=shift)
+                else:
+                    shift_abs = abs(shift)
+                    data = pydub.AudioSegment.silent(duration=shift_abs) + data[:-shift_abs]
             songs.update({name: data})
         return songs
 
@@ -222,7 +228,7 @@ def match_one_song_features(features_list,
         # Get the sample rates
         sr_song = song.frame_rate
         # Compute chroma features
-        song_chroma = chroma_features(song_samples, sr_song, hop_time=50, n_fft=2048, variation="none")
+        song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="none")
         score = compare_features(features, song_chroma)
         results.append((score, name))
     print(results)
@@ -244,11 +250,11 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
         data_samples = np.array(data.get_array_of_samples()).astype(np.float32)
         data_samples /= np.iinfo(data.array_type).max
         sr = data.frame_rate
-        features_list.append((chroma_features(data_samples, sr, hop_time=50, n_fft=2048, variation="none"),name))
+        features_list.append((chroma_features(data_samples, sr, hop_time=100, n_fft=2048, variation="none"),name))
     i = 0
     print('Matching covers to original songs...')
     for name, song in tqdm(covers.items()):
-        if i >= 15:
+        if i >= 75:
             break
         
         # Debug mode: visualize the matching process
@@ -264,7 +270,7 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                 db_samples = np.array(db_audio.get_array_of_samples()).astype(np.float32)
                 db_samples /= np.iinfo(db_audio.array_type).max
                 db_sr = db_audio.frame_rate
-                db_chroma = chroma_features(db_samples, db_sr, hop_time=50, n_fft=1024, variation="none")
+                db_chroma = chroma_features(db_samples, db_sr, hop_time=100, n_fft=2048, variation="none")
                 debug_features_list.append((db_chroma, db_name))
             
             # Find the best match with debugging
@@ -282,7 +288,7 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                 sr_song = song.frame_rate
                 
                 # Use original chroma features for better visualization detail
-                song_chroma = chroma_features(song_samples, sr_song, hop_time=50, n_fft=1024, variation="none")
+                song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="none")
                 
                 # Compute similarity
                 score = compare_features(db_features, song_chroma)

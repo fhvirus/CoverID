@@ -8,7 +8,7 @@ if __name__ == '__main__':
     name_list, ver_A, ver_B = load_covers80(DATADIR)
     
     # Choose which approach to use
-    use_beat_sync = True  # Set to False for frame-synchronous comparison
+    use_beat_sync = False  # Set to False for frame-synchronous comparison
     
     if use_beat_sync:
         print("=== USING BEAT-SYNCHRONOUS CHROMA FEATURES ===")
