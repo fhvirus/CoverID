@@ -6,7 +6,7 @@ from tqdm import tqdm
 import numpy as np
 import librosa
 import matplotlib.pyplot as plt
-from algorithms import chroma_features, compare_features
+from algorithms import chroma_features, compare_features, transpose_chroma
 
 def visualize_similarity_analysis(original_name, cover_name, original_chroma, cover_chroma, save_plots=True):
     """
@@ -213,7 +213,8 @@ def match_one_song(database: dict[str, pydub.AudioSegment],
     return max(results)
 
 def match_one_song_features(features_list,
-                   song: pydub.AudioSegment
+                   song: pydub.AudioSegment,
+                   transpose=False
                    ) -> tuple[float, str]:
     """choose the song with highest similarity in database"""
     #results = [ (compare_features(features, song), name) for features, name in features_list ]
@@ -228,7 +229,9 @@ def match_one_song_features(features_list,
         # Get the sample rates
         sr_song = song.frame_rate
         # Compute chroma features
-        song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
+        song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="none")
+        if transpose:
+            song_chroma=transpose_chroma(song_chroma)
         score = compare_features(features, song_chroma)
         results.append((score, name))
     print(results)
@@ -239,7 +242,8 @@ def match_one_song_features(features_list,
 
 def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                     covers: dict[str, pydub.AudioSegment],
-                    debug_mode=False
+                    debug_mode=False,
+                    transpose=False
                     ) -> tuple[list[str], list[str]]:
     truth_list = []
     matched_list = []
@@ -250,7 +254,10 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
         data_samples = np.array(data.get_array_of_samples()).astype(np.float32)
         data_samples /= np.iinfo(data.array_type).max
         sr = data.frame_rate
-        features_list.append((chroma_features(data_samples, sr, hop_time=100, n_fft=2048, variation="norm"),name))
+        features=chroma_features(data_samples, sr, hop_time=100, n_fft=2048, variation="none")
+        if transpose:
+            features=transpose_chroma(features)
+        features_list.append((features,name))
     i = 0
     print('Matching covers to original songs...')
     for name, song in tqdm(covers.items()):
@@ -270,7 +277,9 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                 db_samples = np.array(db_audio.get_array_of_samples()).astype(np.float32)
                 db_samples /= np.iinfo(db_audio.array_type).max
                 db_sr = db_audio.frame_rate
-                db_chroma = chroma_features(db_samples, db_sr, hop_time=100, n_fft=2048, variation="norm")
+                db_chroma = chroma_features(db_samples, db_sr, hop_time=100, n_fft=2048, variation="none")
+                if transpose:
+                    db_chroma=transpose_chroma(db_chroma)
                 debug_features_list.append((db_chroma, db_name))
             
             # Find the best match with debugging
@@ -288,8 +297,9 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                 sr_song = song.frame_rate
                 
                 # Use original chroma features for better visualization detail
-                song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
-                
+                song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="none")
+                if transpose:
+                    song_chroma=transpose_chroma(song_chroma)
                 # Compute similarity
                 score = compare_features(db_features, song_chroma)
                 print(f"Checking {db_name} vs {name}: score = {score:.3f}")
@@ -325,7 +335,7 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
             print("="*60)
         else:
             # Normal matching without debugging
-            _, matched_name = match_one_song_features(features_list, song)
+            _, matched_name = match_one_song_features(features_list, song, transpose=transpose)
         
         truth_list.append(name)
         matched_list.append(matched_name)

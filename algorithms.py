@@ -3,10 +3,35 @@ import numpy as np
 import librosa
 from numba import njit
 
-note_to_index = {
-    'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
-    'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11
-}
+
+# Major , minor
+krum_schm_profiles = [[6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88],[6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]]
+tones = ['C', 'C#', 'D', 'D#', 'E', 'F','F#', 'G', 'G#', 'A', 'A#', 'B']
+
+alpha=[[[1,0,0,0,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,1,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,0,0,0,0,0,0,1,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,1,0,0,0,0]],
+        [[1,0,0,0,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,1,0,0,0,0],
+        [1,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,0,0,0,0,0,0,1,0,0,0,0],
+        [0,0,0,0,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,1,0,0,0,0]]]
 
 def dummy_compare(a: pydub.AudioSegment,
                   b: pydub.AudioSegment) -> float:
@@ -206,22 +231,66 @@ def smith_waterman(S, wk, wl):
               D[i, j-1] - wl)
     return D[1:, 1:]  # Return the similarity matrix without the extra row and column
 
-    def detect_key(chroma_features):
-        return
 
-    def transpose_chroma(chroma_features, new_key:string="C"): 
-        global note_to_index
-        original_key_index=detect_key(chroma_features)
+def generate_key_profiles(alpha, ks_profiles, s=0.6, n_harmonics=4): # Based on paper "Tonal Description of Polyphonic Audio for Music Content Processing"
+    profiles = []
 
-        # Error if new_key selected is not valid:
-        if new_key not in note_to_index:
-            raise ValueError(f"Unknown key selected: {new_key}")
-        new_key_index = note_to_index[new_key]
+    for j, alpha_matrix in enumerate(alpha):  
+        base_profiles = []
+        for i in range(12):  
+            harmonic_profile = np.zeros(12)
+            for j_note in range(12):  
+                if alpha_matrix[i][j_note] == 1:
+                    for h in range(1, n_harmonics + 1):
+                        pitch_class = (j_note * h) % 12
+                        contribution = s ** (h - 1)
+                        harmonic_profile[pitch_class] += contribution
+            final_profile = harmonic_profile * ks_profiles[j]
+            base_profiles.append(final_profile)
+        profiles.append(base_profiles)
 
-        # Rotate to move original_key_index to new_key_index
-        shift = (new_key_index - original_key_index) % 12
+    return profiles
 
-        # Apply circular rotation:
-        transposed = np.roll(chroma_features, shift, axis=1)
+def detect_key(chroma_features, krum_schm=False):
+    global krum_schm_profiles
+    global tones
+    global alpha
 
-        return transposed
+    chroma_features.shape
+    chroma_sum = np.mean(chroma_features, axis=1) 
+    max_r = 0
+    key = 0
+    if krum_schm:
+        new_profiles = generate_key_profiles(alpha,krum_schm_profiles) 
+        for j, elem in enumerate(new_profiles):
+            for i, tonic in enumerate(tones):
+                profile = np.roll(elem, i)
+                # Polyphonic:
+                #profile = alpha[j] @ profile
+                #profile = generate_key_profiles(alpha[j],profile)
+                r = np.corrcoef(chroma_sum, profile)[0, 1]
+                if r > max_r:
+                    max_r = r
+                    key = i # + j*12 # Assign: C=1, C#=2, D=3.... Cm=13, C#m=14, Dm=15 .... Bm=24
+    else:
+        key = np.argmax(chroma_sum)
+    return key
+
+
+def transpose_chroma(chroma_features, new_key:str="C"): 
+    global tones
+    original_key_index=detect_key(chroma_features)
+
+    # Error if new_key selected is not valid:
+    if new_key not in tones:
+        raise ValueError(f"Unknown key selected: {new_key}")
+    new_key_index = tones.index(new_key)
+
+    # Rotate to move original_key_index to new_key_index
+    shift = (new_key_index - original_key_index) % 12
+
+    # Apply circular rotation:
+    transposed = np.roll(chroma_features, shift, axis=0)
+
+    return transposed
+

@@ -7,6 +7,7 @@ DATADIR = './coversongs/covers32k/'
 if __name__ == '__main__':
     name_list, ver_A, ver_B = load_covers80(DATADIR)
     
+    
     # Choose which approach to use
     use_beat_sync = False  # Set to False for frame-synchronous comparison
     
@@ -36,7 +37,7 @@ if __name__ == '__main__':
     else:
         print("=== USING FRAME-SYNCHRONOUS CHROMA FEATURES ===")
         # Run evaluation with frame-synchronous features (original approach)
-        truth_list, matched_list = match_all_songs_features(ver_A, ver_B, debug_mode=True)
+        truth_list, matched_list = match_all_songs_features(ver_A, ver_B, debug_mode=True, transpose=True)
 
         accuracy = sum([a == b for a, b in zip(truth_list, matched_list)]) / len(truth_list)
         print(f'Accuracy: {accuracy:.3f}')
