@@ -35,7 +35,7 @@ def compare(a: pydub.AudioSegment,
 
     # Compute similarity matrix
     S = similarity_matrix(a_chroma, b_chroma, norm=True)
-    D = smith_waterman(S,0.5)
+    D = smith_waterman(S,0.5,0.5)
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -48,7 +48,7 @@ def compare_features(og_features,
 
     # Compute similarity matrix
     S = similarity_matrix(og_features, cover_features, norm=True)
-    D = smith_waterman(S,0.5)
+    D = smith_waterman(S,0.5,0.5)
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -91,7 +91,7 @@ def compare_beat_sync(a: pydub.AudioSegment,
 
     # Compute similarity matrix
     S = similarity_matrix(a_chroma, b_chroma, norm=True)
-    D = smith_waterman(S,0.5)
+    D = smith_waterman(S,0.5,0.5)
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -191,12 +191,12 @@ def D_matrix_optimal(S):
     return D
 
 @njit(cache=True, fastmath=True)
-def smith_waterman(S, d):
+def smith_waterman(S, wk, wl):
     D = np.zeros((S.shape[0]+1, S.shape[1]+1))  # D matrix (start with idx 1)
     for i in range(1, S.shape[0]+1):
         for j in range(1, S.shape[1]+1):
             D[i, j] = max(0,
               D[i-1, j-1] + S[i-1, j-1],
-              D[i-1, j] - d,
-              D[i, j-1] - d)
+              D[i-1, j] - wk,
+              D[i, j-1] - wl)
     return D[1:, 1:]  # Return the similarity matrix without the extra row and column

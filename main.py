@@ -38,8 +38,8 @@ if __name__ == '__main__':
         # Run evaluation with frame-synchronous features (original approach)
         truth_list, matched_list = match_all_songs_features(ver_A, ver_B, debug_mode=True)
 
-        precision = sum([a == b for a, b in zip(truth_list, matched_list)]) / len(truth_list)
-        print(f'Frame-sync Precision: {precision:.3f}')
+        accuracy = sum([a == b for a, b in zip(truth_list, matched_list)]) / len(truth_list)
+        print(f'Accuracy: {accuracy:.3f}')
 
     # confusion_matrix = sklearn.metrics.classification_report(truth_list, matched_list)
     # print(confusion_matrix)
