@@ -3,6 +3,11 @@ import numpy as np
 import librosa
 from numba import njit
 
+note_to_index = {
+    'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
+    'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11
+}
+
 def dummy_compare(a: pydub.AudioSegment,
                   b: pydub.AudioSegment) -> float:
     """Given two audio, returns their similarity"""
@@ -200,3 +205,23 @@ def smith_waterman(S, wk, wl):
               D[i-1, j] - wk,
               D[i, j-1] - wl)
     return D[1:, 1:]  # Return the similarity matrix without the extra row and column
+
+    def detect_key(chroma_features):
+        return
+
+    def transpose_chroma(chroma_features, new_key:string="C"): 
+        global note_to_index
+        original_key_index=detect_key(chroma_features)
+
+        # Error if new_key selected is not valid:
+        if new_key not in note_to_index:
+            raise ValueError(f"Unknown key selected: {new_key}")
+        new_key_index = note_to_index[new_key]
+
+        # Rotate to move original_key_index to new_key_index
+        shift = (new_key_index - original_key_index) % 12
+
+        # Apply circular rotation:
+        transposed = np.roll(chroma_features, shift, axis=1)
+
+        return transposed
