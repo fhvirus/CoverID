@@ -59,8 +59,8 @@ def compare(a: pydub.AudioSegment,
     sr_b = b.frame_rate
 
     # Compute chroma features for both audio signals (optimized for speed)
-    a_chroma = chroma_features(a_samples, sr_a, hop_time=50, n_fft=1024, variation="none")
-    b_chroma = chroma_features(b_samples, sr_b, hop_time=50, n_fft=1024, variation="none")
+    a_chroma = chroma_features(a_samples, sr_a, hop_time=50, n_fft=1024, variation="norm")
+    b_chroma = chroma_features(b_samples, sr_b, hop_time=50, n_fft=1024, variation="norm")
     print(f"get chroma features: {a_chroma.shape}, {b_chroma.shape}")
 
     # Compute similarity matrix
@@ -251,7 +251,7 @@ def generate_key_profiles(alpha, ks_profiles, s=0.6, n_harmonics=4): # Based on 
 
     return profiles
 
-def detect_key(chroma_features, krum_schm=False):
+def detect_key(chroma_features, krum_schm=True):
     global krum_schm_profiles
     global tones
     global alpha

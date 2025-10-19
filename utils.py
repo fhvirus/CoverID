@@ -229,7 +229,7 @@ def match_one_song_features(features_list,
         # Get the sample rates
         sr_song = song.frame_rate
         # Compute chroma features
-        song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="none")
+        song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
         if transpose:
             song_chroma=transpose_chroma(song_chroma)
         score = compare_features(features, song_chroma)
@@ -254,7 +254,7 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
         data_samples = np.array(data.get_array_of_samples()).astype(np.float32)
         data_samples /= np.iinfo(data.array_type).max
         sr = data.frame_rate
-        features=chroma_features(data_samples, sr, hop_time=100, n_fft=2048, variation="none")
+        features=chroma_features(data_samples, sr, hop_time=100, n_fft=2048, variation="norm")
         if transpose:
             features=transpose_chroma(features)
         features_list.append((features,name))
@@ -277,7 +277,7 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                 db_samples = np.array(db_audio.get_array_of_samples()).astype(np.float32)
                 db_samples /= np.iinfo(db_audio.array_type).max
                 db_sr = db_audio.frame_rate
-                db_chroma = chroma_features(db_samples, db_sr, hop_time=100, n_fft=2048, variation="none")
+                db_chroma = chroma_features(db_samples, db_sr, hop_time=100, n_fft=2048, variation="norm")
                 if transpose:
                     db_chroma=transpose_chroma(db_chroma)
                 debug_features_list.append((db_chroma, db_name))
@@ -297,7 +297,7 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                 sr_song = song.frame_rate
                 
                 # Use original chroma features for better visualization detail
-                song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="none")
+                song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
                 if transpose:
                     song_chroma=transpose_chroma(song_chroma)
                 # Compute similarity
