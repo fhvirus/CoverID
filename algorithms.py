@@ -251,46 +251,216 @@ def generate_key_profiles(alpha, ks_profiles, s=0.6, n_harmonics=4): # Based on 
 
     return profiles
 
-def detect_key(chroma_features, krum_schm=True):
+def generate_key_profiles_paper(): # Based on paper "Understanding the Algorithm Behind Audio Key Detection"
+    """
+    Generate normalized key profiles for all 24 keys (12 major + 12 minor).
+    
+    The algorithm creates templates for each key by:
+    1. Shifting the Krumhansl-Schmuckler profiles for each chromatic step
+    2. Normalizing each profile to unit length
+    
+    Returns:
+    profiles: list of 24 normalized key profiles [C major, C# major, ..., B major, C minor, ..., B minor]
+    """
+    global krum_schm_profiles
+    
+    profiles = []
+    
+    # Major key profiles (0-11)
+    major_template = np.array(krum_schm_profiles[0])  # Krumhansl-Schmuckler major profile
+    for shift in range(12):  # For each chromatic step (C, C#, D, ...)
+        # Shift the template to create profile for this key
+        shifted_profile = np.roll(major_template, shift)
+        # Normalize to unit length
+        norm = np.linalg.norm(shifted_profile)
+        if norm > 0:
+            normalized_profile = shifted_profile / norm
+        else:
+            normalized_profile = shifted_profile
+        profiles.append(normalized_profile)
+    
+    # Minor key profiles (12-23)  
+    minor_template = np.array(krum_schm_profiles[1])  # Krumhansl-Schmuckler minor profile
+    for shift in range(12):  # For each chromatic step (Cm, C#m, Dm, ...)
+        # Shift the template to create profile for this key
+        shifted_profile = np.roll(minor_template, shift)
+        # Normalize to unit length
+        norm = np.linalg.norm(shifted_profile)
+        if norm > 0:
+            normalized_profile = shifted_profile / norm
+        else:
+            normalized_profile = shifted_profile
+        profiles.append(normalized_profile)
+    
+    return profiles
+
+def detect_key_algorithm(chroma_features):
+    """
+    Key detection algorithm based on "Understanding the Algorithm Behind Audio Key Detection".
+    
+    Algorithm steps:
+    1. Compute average chroma distribution from input features
+    2. Normalize the chroma distribution
+    3. Generate all 24 key profiles (12 major + 12 minor)
+    4. Compute correlation between chroma and each key profile
+    5. Return the key with highest correlation
+    
+    Parameters:
+    chroma_features: chroma feature matrix (12 x n_frames)
+    
+    Returns:
+    key_index: detected key index (0-11 for major, 12-23 for minor)
+    correlation: correlation coefficient of best match
+    """
+    # Step 1: Compute average chroma distribution
+    chroma_sum = np.mean(chroma_features, axis=1)
+    
+    # Step 2: Normalize chroma distribution to unit length
+    chroma_norm = np.linalg.norm(chroma_sum)
+    if chroma_norm > 0:
+        chroma_normalized = chroma_sum / chroma_norm
+    else:
+        chroma_normalized = chroma_sum
+    
+    # Step 3: Generate all key profiles
+    key_profiles = generate_key_profiles_paper()
+    
+    # Step 4: Find best matching key profile
+    max_correlation = -1
+    best_key = 0
+    
+    for key_idx, profile in enumerate(key_profiles):
+        # Compute correlation between normalized chroma and key profile
+        correlation = np.dot(chroma_normalized, profile)
+        
+        if correlation > max_correlation:
+            max_correlation = correlation
+            best_key = key_idx
+    
+    return best_key, max_correlation
+
+def detect_key(chroma_features, krum_schm=True, Algo=True):
+    """
+    Main key detection function with multiple algorithm options.
+    
+    Parameters:
+    chroma_features: chroma feature matrix
+    krum_schm: use original Krumhansl-Schmuckler method  
+    Algo: use algorithm from "Understanding the Algorithm Behind Audio Key Detection"
+    
+    Returns:
+    key_index: detected key index
+    """
     global krum_schm_profiles
     global tones
     global alpha
 
-    chroma_features.shape
-    chroma_sum = np.mean(chroma_features, axis=1) 
-    max_r = 0
-    key = 0
-    if krum_schm:
-        new_profiles = generate_key_profiles(alpha,krum_schm_profiles) 
+    if Algo:
+        # Use the algorithm from "Understanding the Algorithm Behind Audio Key Detection"
+        key_index, correlation = detect_key_algorithm(chroma_features)
+        print(f"Key detection: index={key_index}, correlation={correlation:.3f}")
+        return key_index
+        
+    elif krum_schm:
+        # Original implementation with alpha matrices
+        chroma_sum = np.mean(chroma_features, axis=1) 
+        max_r = 0
+        key = 0
+        new_profiles = generate_key_profiles(alpha, krum_schm_profiles) 
         for j, elem in enumerate(new_profiles):
             for i, tonic in enumerate(tones):
                 profile = np.roll(elem, i)
-                # Polyphonic:
-                #profile = alpha[j] @ profile
-                #profile = generate_key_profiles(alpha[j],profile)
                 r = np.corrcoef(chroma_sum, profile)[0, 1]
-                if r > max_r:
+                if not np.isnan(r) and r > max_r:
                     max_r = r
                     key = i # + j*12 # Assign: C=1, C#=2, D=3.... Cm=13, C#m=14, Dm=15 .... Bm=24
+        return key
     else:
+        # Simple method: return index of maximum chroma bin
+        chroma_sum = np.mean(chroma_features, axis=1)
         key = np.argmax(chroma_sum)
-    return key
+        return key
 
-
-def transpose_chroma(chroma_features, new_key:str="C"): 
+def get_key_name_from_index(key_index):
+    """
+    Convert key index to human-readable key name.
+    
+    Parameters:
+    key_index: 0-23 (0-11 for major keys, 12-23 for minor keys)
+    
+    Returns:
+    key_name: string like "C major", "F# minor", etc.
+    """
     global tones
-    original_key_index=detect_key(chroma_features)
+    
+    if key_index < 12:
+        # Major key
+        root = tones[key_index]
+        return f"{root} major"
+    else:
+        # Minor key
+        root = tones[key_index - 12]
+        return f"{root} minor"
 
-    # Error if new_key selected is not valid:
+
+def transpose_chroma(chroma_features, new_key: str = "C", use_algorithm=True): 
+    """
+    Transpose chroma features to a target key.
+    
+    Parameters:
+    chroma_features: input chroma feature matrix
+    new_key: target key name (e.g., "C", "F#", "Am", "Bbm")
+    use_algorithm: whether to use the paper's algorithm for key detection
+    
+    Returns:
+    transposed: transposed chroma features
+    """
+    global tones
+    
+    # Detect original key
+    if use_algorithm:
+        original_key_index = detect_key(chroma_features, krum_schm=False, Algo=True)
+        original_key_name = get_key_name_from_index(original_key_index)
+        print(f"Detected original key: {original_key_name}")
+    else:
+        original_key_index = detect_key(chroma_features, krum_schm=True, Algo=False)
+    
+    # Parse target key
+    new_key = new_key.strip()
+    is_minor = False
+    
+    # Handle minor key notation
+    if new_key.endswith('m') or new_key.endswith('min') or new_key.endswith('minor'):
+        is_minor = True
+        # Remove minor indicators
+        new_key = new_key.replace('minor', '').replace('min', '').replace('m', '').strip()
+    
+    # Handle alternative notations for sharps/flats
+    key_alternatives = {
+        'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'
+    }
+    if new_key in key_alternatives:
+        new_key = key_alternatives[new_key]
+    
+    # Error if new_key selected is not valid
     if new_key not in tones:
-        raise ValueError(f"Unknown key selected: {new_key}")
+        raise ValueError(f"Unknown key selected: {new_key}. Valid keys: {tones}")
+    
     new_key_index = tones.index(new_key)
-
-    # Rotate to move original_key_index to new_key_index
-    shift = (new_key_index - original_key_index) % 12
-
-    # Apply circular rotation:
+    if is_minor:
+        new_key_index += 12  # Offset for minor keys
+    
+    # Calculate the shift needed
+    original_root = original_key_index % 12  # Get root note (ignore major/minor)
+    target_root = new_key_index % 12         # Get target root note
+    shift = (target_root - original_root) % 12
+    
+    # Apply circular rotation to transpose
     transposed = np.roll(chroma_features, shift, axis=0)
-
+    
+    if use_algorithm:
+        target_key_name = get_key_name_from_index(new_key_index)
+        print(f"Transposed to: {target_key_name} (shift: {shift} semitones)")
+    
     return transposed
 
