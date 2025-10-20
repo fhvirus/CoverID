@@ -178,7 +178,15 @@ def normalize_columns(mat: np.ndarray) -> np.ndarray:
     norms[norms == 0] = 1
     return mat / norms
 
-def similarity_matrix(x_chroma, y_chroma, norm:False) -> np.ndarray:
+def thresh_and_scale(S, rho, delta):
+    n, m = S.shape
+    row_thresholds = np.partition(S, int((1 - rho) * m), axis=1)[:, int((1 - rho) * m)]
+    col_thresholds = np.partition(S, int((1 - rho) * n), axis=0)[int((1 - rho) * n), :]
+    mask = (S >= row_thresholds[:, None]) & (S >= col_thresholds[None, :])
+    S[~mask] = delta
+    return S
+
+def similarity_matrix(x_chroma, y_chroma, norm:True) -> np.ndarray:
     """
     Compute a similarity matrix from feature sequences. P
     x_chroma : np.ndarray. Chroma feature matrix for audio x (shape: (n_features, n_frames_x)).
@@ -192,7 +200,7 @@ def similarity_matrix(x_chroma, y_chroma, norm:False) -> np.ndarray:
     
     S = np.dot(x_chroma.T, y_chroma)  # Compute the dot product between feature vectors
     #S_smooth = librosa.segment.path_enhance(S, 51, window='hann', n_filters=7) # rev, trying to see somthing
-    return S
+    return thresh_and_scale(S, 0.2, -2)
 
 @njit(cache=True, fastmath=True)  
 def D_matrix(S):
