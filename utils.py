@@ -74,21 +74,36 @@ def visualize_similarity_analysis(original_name, cover_name, original_chroma, co
         i, j = end_i, end_j
         
         while i > 0 and j > 0:
+            # Check stopping condition: D(i,j) = 0 (Smith-Waterman local alignment end)
+            if D[i, j] == 0:
+                break
+                
             # Find which direction gave us the current value
             current_val = D[i, j]
             
             # Check three possible predecessors
+            # Both D and S have the same dimensions (no padding in returned D)
             diagonal = D[i-1, j-1] + S[i-1, j-1] if i > 0 and j > 0 else -np.inf
-            from_above = D[i-1, j] + S[i-1, j-1] if i > 0 else -np.inf
-            from_left = D[i, j-1] + S[i-1, j-1] if j > 0 else -np.inf
+            from_above = D[i-1, j] - 0.5 if i > 0 else -np.inf  # Gap penalty (wk=0.5)
+            from_left = D[i, j-1] - 0.5 if j > 0 else -np.inf   # Gap penalty (wl=0.5)
             
             # Choose the direction that led to current value
-            if abs(current_val - diagonal) < 1e-10 and diagonal >= max(from_above, from_left):
+            if i > 0 and j > 0 and abs(current_val - diagonal) < 1e-6:
                 i, j = i-1, j-1  # Diagonal move (best alignment)
-            elif abs(current_val - from_above) < 1e-10:
+            elif i > 0 and abs(current_val - from_above) < 1e-6:
                 i = i-1  # Vertical move (skip in original)
-            else:
+            elif j > 0 and abs(current_val - from_left) < 1e-6:
                 j = j-1  # Horizontal move (skip in cover)
+            else:
+                # If no exact match found, choose best predecessor
+                if i > 0 and j > 0 and diagonal >= max(from_above, from_left):
+                    i, j = i-1, j-1
+                elif i > 0 and from_above >= from_left:
+                    i = i-1
+                elif j > 0:
+                    j = j-1
+                else:
+                    break  # Safety break
             
             path.append((i, j))
         
