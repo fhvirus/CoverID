@@ -464,3 +464,14 @@ def transpose_chroma(chroma_features, new_key: str = "C", use_algorithm=True):
     
     return transposed
 
+def shifting(original_features, cover_features):
+    original_sum = np.sum(original_features, axis=1)
+    cover_sum = np.sum(cover_features, axis=1)
+    original_max = np.argmax(original_sum)
+    cover_max = np.argmax(cover_sum)
+    if original_max == cover_max:
+        shifted_cover_features=cover_features
+    else:
+        shift = (original_max - cover_max)% 12
+        shifted_cover_features = np.roll(cover_features, shift, axis=0)
+    return shifted_cover_features
