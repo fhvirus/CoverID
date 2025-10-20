@@ -477,4 +477,4 @@ def shifting(x, y):
     ky = np.sum(y, axis=0)
     score = [ np.dot(np.roll(kx, i), ky) for i in range(12) ]
     shift = np.argmax(score)
-    return np.roll(x, shift, axis=1)
+    return np.roll(x,shift,axis=1)
