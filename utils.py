@@ -234,8 +234,7 @@ def match_one_song_features(features_list,
     """choose the song with highest similarity in database"""
     #results = [ (compare_features(features, song), name) for features, name in features_list ]
     results = []
-    for features, name in features_list:
-        #print(name)  
+    for features, name in features_list: 
         song = song.set_channels(1) if song.channels > 1 else song
         # Convert pydub AudioSegment to numpy array
         song_samples = np.array(song.get_array_of_samples()).astype(np.float32)
@@ -244,10 +243,10 @@ def match_one_song_features(features_list,
         # Get the sample rates
         sr_song = song.frame_rate
         # Compute chroma features
-        song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
+        song_chroma_no_shift = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
         if transpose:
-            song_chroma=transpose_chroma(song_chroma)
-        song_chroma = shifting(features, song_chroma)
+            song_chroma=transpose_chroma(song_chroma_no_shift)
+        song_chroma = shifting(features, song_chroma_no_shift)
         score = compare_features(features, song_chroma)
         results.append((score, name))
     print(results)
@@ -313,11 +312,11 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                 sr_song = song.frame_rate
                 
                 # Use original chroma features for better visualization detail
-                song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
+                song_chroma_no_shift = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
                 if transpose:
-                    song_chroma=transpose_chroma(song_chroma)
+                    song_chroma=transpose_chroma(song_chroma_no_shift)
                 # Compute similarity
-                song_chroma = shifting(features, song_chroma)
+                song_chroma = shifting(features, song_chroma_no_shift)
                 score = compare_features(db_features, song_chroma)
                 print(f"Checking {db_name} vs {name}: score = {score:.3f}")
                 

@@ -473,8 +473,8 @@ def transpose_chroma(chroma_features, new_key: str = "C", use_algorithm=True):
     return transposed
 
 def shifting(x, y):
-    kx = np.sum(x, axis=0)
-    ky = np.sum(y, axis=0)
-    score = [ np.dot(np.roll(kx, i), ky) for i in range(12) ]
+    kx = np.sum(x, axis=1)
+    ky = np.sum(y, axis=1)
+    score = [ np.dot(np.roll(ky, i), kx) for i in range(12) ]
     shift = np.argmax(score)
-    return np.roll(x,shift,axis=1)
+    return np.roll(y,shift,axis=1)
