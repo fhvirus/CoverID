@@ -1,4 +1,4 @@
-from utils import load_covers80, match_all_songs, match_all_songs_features
+from utils import load_covers80, match_all_songs, match_all_songs_features, accuracy_score
 from beat_chroma import match_all_songs_features_beat_sync
 from algorithms import dummy_compare, compare, compare_beat_sync
 
@@ -36,11 +36,17 @@ if __name__ == '__main__':
                 print(f"  {status} {truth} -> {matched}")
     else:
         print("=== USING FRAME-SYNCHRONOUS CHROMA FEATURES ===")
-        # Run evaluation with frame-synchronous features (original approach)
-        truth_list, matched_list = match_all_songs_features(ver_A, ver_B, debug_mode=True, transpose=False)
+        # Run evaluation with frame-synchronous features and get top 5 matches
+        truth_list, matched_dict = match_all_songs_features(ver_A, ver_B, debug_mode=True, transpose=False)
 
-        accuracy = sum([a == b for a, b in zip(truth_list, matched_list)]) / len(truth_list)
-        print(f'Accuracy: {accuracy:.3f}')
+        # Calculate different accuracy metrics
+        top1_accuracy = accuracy_score(truth_list, matched_dict, k=1)
+        top3_accuracy = accuracy_score(truth_list, matched_dict, k=3)
+        top5_accuracy = accuracy_score(truth_list, matched_dict, k=5)
 
+        print(f'Top-1 Accuracy: {top1_accuracy:.3f}')
+        print(f'Top-3 Accuracy: {top3_accuracy:.3f}')
+        print(f'Top-5 Accuracy: {top5_accuracy:.3f}')
+        
     # confusion_matrix = sklearn.metrics.classification_report(truth_list, matched_list)
     # print(confusion_matrix)

@@ -230,9 +230,18 @@ def match_one_song(database: dict[str, pydub.AudioSegment],
 def match_one_song_features(features_list,
                    song: pydub.AudioSegment,
                    transpose=False
-                   ) -> tuple[float, str]:
-    """choose the song with highest similarity in database"""
-    #results = [ (compare_features(features, song), name) for features, name in features_list ]
+                   ) -> dict:
+    """
+    Choose the top 5 songs with highest similarity in database.
+    
+    Parameters:
+    - features_list: list of (features, name) tuples
+    - song: pydub.AudioSegment to match
+    - transpose: whether to apply key transposition
+    
+    Returns:
+    - dict: top 5 matches with rankings {"first": {"name": str, "score": float}, ...}
+    """
     results = []
     for features, name in features_list: 
         song = song.set_channels(1) if song.channels > 1 else song
@@ -249,19 +258,30 @@ def match_one_song_features(features_list,
         song_chroma = shifting(features, song_chroma_no_shift)
         score = compare_features(features, song_chroma)
         results.append((score, name))
-    print(results)
-    best_match = max(results, key=lambda x: x[0])
-    print(best_match)
-    score_match, name_match = best_match
-    return (score_match, name_match)
+    
+    # Sort by score in descending order and get top 5
+    results.sort(key=lambda x: x[0], reverse=True)
+    top5 = results[:5]
+    
+    # Create dictionary with ranking
+    top5_dict = {}
+    rankings = ["first", "second", "third", "fourth", "fifth"]
+    for i, (score, name) in enumerate(top5):
+        if i < len(rankings):
+            top5_dict[rankings[i]] = {"name": name, "score": score}
+    
+    # Create a more readable format for printing
+    matches_str = [(rank, data['name'], f"{data['score']:.3f}") for rank, data in top5_dict.items()]
+    print(f"Top 5 matches: {matches_str}")
+    return top5_dict
 
 def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                     covers: dict[str, pydub.AudioSegment],
                     debug_mode=False,
                     transpose=False
-                    ) -> tuple[list[str], list[str]]:
+                    ) -> tuple[list[str], dict]:
     truth_list = []
-    matched_list = []
+    matched_dict = {}
     features_list = []
     print('Computing features dataset...')
     for name, data in tqdm(database.items()):
@@ -346,19 +366,24 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
             else:
                 print(f"*** ALGORITHM CORRECTLY CHOSE: {best_name} ***")
             
-            matched_name = best_name
-            print(f"Final decision: {name} -> {matched_name} (score: {best_score:.3f})")
+            # Get top 5 matches for debugging
+            top5_matches = match_one_song_features(features_list, song, transpose=transpose)
+            matched_dict[name] = top5_matches
+            matched_name = top5_matches["first"]["name"]
+                
+            print(f"Final decision: {name} -> {matched_name} (score: {top5_matches['first']['score']:.3f})")
             print("="*60)
         else:
             # Normal matching without debugging
-            _, matched_name = match_one_song_features(features_list, song, transpose=transpose)
+            top5_matches = match_one_song_features(features_list, song, transpose=transpose)
+            matched_dict[name] = top5_matches
+            matched_name = top5_matches["first"]["name"]
         
         truth_list.append(name)
-        matched_list.append(matched_name)
         i += 1
         print(f"Cover song: {name}. Matched song: {matched_name}")
 
-    return truth_list, matched_list
+    return truth_list, matched_dict
 
 def match_all_songs(database: dict[str, pydub.AudioSegment],
                     covers: dict[str, pydub.AudioSegment],
@@ -371,3 +396,20 @@ def match_all_songs(database: dict[str, pydub.AudioSegment],
         truth_list.append(name)
         matched_list.append(matched_name)
     return truth_list, matched_list
+
+def accuracy_score(truth_list: list[str], matched_dict: dict, k: int = 5) -> float:
+    """Compute top-k accuracy score (correct answer appears in top k matches)."""
+    correct = 0
+    rankings = ["first", "second", "third", "fourth", "fifth"]
+    
+    for truth_song in truth_list:
+        if truth_song in matched_dict:
+            # Check if correct answer appears in top k
+            for i in range(min(k, len(rankings))):
+                ranking = rankings[i]
+                if ranking in matched_dict[truth_song]:
+                    if matched_dict[truth_song][ranking]["name"] == truth_song:
+                        correct += 1 * (1 / (i + 1))  # Weighted score for top-k
+                        break
+    
+    return correct / len(truth_list) if len(truth_list) > 0 else 0.0
