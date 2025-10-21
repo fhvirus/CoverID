@@ -6,7 +6,7 @@ from tqdm import tqdm
 import numpy as np
 import librosa
 import matplotlib.pyplot as plt
-from algorithms import chroma_features, compare_features, transpose_chroma, shifting
+from algorithms import chroma_features, compare_features, transpose_chroma, shifting, chroma_shifting
 
 def visualize_similarity_analysis(original_name, cover_name, original_chroma, cover_chroma, save_plots=True):
     """
@@ -255,7 +255,7 @@ def match_one_song_features(features_list,
         song_chroma_no_shift = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
         if transpose:
             song_chroma=transpose_chroma(song_chroma_no_shift)
-        song_chroma = shifting(features, song_chroma_no_shift)
+        song_chroma = chroma_shifting(features, song_chroma_no_shift)
         score = compare_features(features, song_chroma)
         results.append((score, name))
     
@@ -336,7 +336,7 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                 if transpose:
                     song_chroma=transpose_chroma(song_chroma_no_shift)
                 # Compute similarity
-                song_chroma = shifting(features, song_chroma_no_shift)
+                song_chroma = chroma_shifting(features, song_chroma_no_shift)
                 score = compare_features(db_features, song_chroma)
                 print(f"Checking {db_name} vs {name}: score = {score:.3f}")
                 

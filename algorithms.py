@@ -2,6 +2,7 @@ import pydub
 import numpy as np
 import librosa
 from numba import njit
+from scipy.signal import correlate2d
 
 
 # Major , minor
@@ -245,7 +246,7 @@ def smith_waterman(S, a=1, b=0.5, k=1, l=1,penalty="constant", th=0):
     for i in range(1, S.shape[0]+1):
         for j in range(1, S.shape[1]+1):
             D[i, j] = max(0,
-              D[i-1, j-1] + S[i,j],#S[i-1, j-1], # sense el -1??
+              D[i-1, j-1] + S[i-1, j-1], # sense el -1??
               D[i-k, j] - wk,
               D[i, j-l] - wl)
     return D[1:, 1:]  # Return the similarity matrix without the extra row and column
@@ -490,3 +491,20 @@ def shifting(x, y):
     score = [ np.dot(np.roll(ky, i), kx) for i in range(12) ]
     shift = np.argmax(score)
     return np.roll(y,shift,axis=1)
+
+def chroma_shifting(original_features, cover_features):
+    max_score = -np.inf
+    best_shift = 0
+    best_shifted_cover = None
+
+    for shift in range(12):
+        shifted = np.roll(cover_features, shift)
+        corr = correlate2d(original_features, shifted, mode='valid')
+
+        score = np.max(corr)
+        if score > max_score:
+            max_score = score
+            best_shift = shift
+            best_shifted_cover = shifted
+
+    return best_shifted_cover
