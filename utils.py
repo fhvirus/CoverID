@@ -21,7 +21,7 @@ def visualize_similarity_analysis(original_name, cover_name, original_chroma, co
     
     # Compute similarity matrices
     S = similarity_matrix(original_chroma, cover_chroma, norm= True)  # Raw dot product
-    D = smith_waterman(S,0.5,0.5)  # Dynamic programming matrix
+    D = smith_waterman(S, a=0.5, b=0.5, k=1, l=1,penalty="affine")  # Dynamic programming matrix
     
     # Create subplot layout
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))

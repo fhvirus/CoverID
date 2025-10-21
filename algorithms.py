@@ -65,7 +65,7 @@ def compare(a: pydub.AudioSegment,
 
     # Compute similarity matrix
     S = similarity_matrix(a_chroma, b_chroma, norm=True)
-    D = smith_waterman(S,0.5,0.5)
+    D = smith_waterman(S, a=0.5, b=0.5, k=1, l=1,penalty="affine")
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -78,7 +78,7 @@ def compare_features(og_features,
 
     # Compute similarity matrix
     S = similarity_matrix(og_features, cover_features, norm=True)
-    D = smith_waterman(S,0.5,0.5)
+    D = smith_waterman(S, a=0.5, b=0.5, k=1, l=1,penalty="affine")
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -121,7 +121,7 @@ def compare_beat_sync(a: pydub.AudioSegment,
 
     # Compute similarity matrix
     S = similarity_matrix(a_chroma, b_chroma, norm=True)
-    D = smith_waterman(S,0.5,0.5)
+    D = smith_waterman(S, a=0.5, b=0.5, k=1, l=1,penalty="affine")
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -229,15 +229,27 @@ def D_matrix_optimal(S):
     return D
 
 @njit(cache=True, fastmath=True)
-def smith_waterman(S, wk, wl):
+def smith_waterman(S, a=1, b=0.5, k=1, l=1,penalty="constant", th=0):
     D = np.zeros((S.shape[0]+1, S.shape[1]+1))  # D matrix (start with idx 1)
+    if penalty == "constant":
+        wk = b*k
+        wl = b*l
+    elif penalty == "affine":
+        wk = a+b*k
+        wl = a+b*l
+    elif penalty == "double_affine":
+        wk = a+min(k,th)*b+max(0,k-th)*b
+        wl = a+min(l,th)*b+max(0,l-th)*b
+    else:
+         raise ValueError(f"Invalid gap penalty mode: '{penalty}'. Expected 'constant' or 'affine'.")
     for i in range(1, S.shape[0]+1):
         for j in range(1, S.shape[1]+1):
             D[i, j] = max(0,
-              D[i-1, j-1] + S[i-1, j-1],
-              D[i-1, j] - wk,
-              D[i, j-1] - wl)
+              D[i-1, j-1] + S[i,j],#S[i-1, j-1], # sense el -1??
+              D[i-k, j] - wk,
+              D[i, j-l] - wl)
     return D[1:, 1:]  # Return the similarity matrix without the extra row and column
+
 
 
 def generate_key_profiles(alpha, ks_profiles, s=0.6, n_harmonics=4): # Based on paper "Tonal Description of Polyphonic Audio for Music Content Processing"
