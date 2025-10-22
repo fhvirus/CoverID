@@ -48,8 +48,8 @@ def compare(a: pydub.AudioSegment,
     """Given two audio, returns their similarity"""
 
     # Convert pydub AudioSegment to numpy array
-    a_samples = np.array(a.get_array_of_samples()).astype(np.float32)
-    b_samples = np.array(b.get_array_of_samples()).astype(np.float32)
+    a_samples = np.array(a.get_array_of_samples()).astype(np.float64)
+    b_samples = np.array(b.get_array_of_samples()).astype(np.float64)
 
     # Normalize audio samples to the range [-1, 1]
     a_samples /= np.iinfo(a.array_type).max
@@ -60,8 +60,8 @@ def compare(a: pydub.AudioSegment,
     sr_b = b.frame_rate
 
     # Compute chroma features for both audio signals (optimized for speed)
-    a_chroma = chroma_features(a_samples, sr_a, hop_time=100, n_fft=1024, variation="norm")
-    b_chroma = chroma_features(b_samples, sr_b, hop_time=100, n_fft=1024, variation="norm")
+    a_chroma = chroma_features(a_samples, sr_a, hop_time=200, n_fft=1024, variation="norm")
+    b_chroma = chroma_features(b_samples, sr_b, hop_time=200, n_fft=1024, variation="norm")
     print(f"get chroma features: {a_chroma.shape}, {b_chroma.shape}")
 
     # Compute similarity matrix
@@ -104,8 +104,8 @@ def compare_beat_sync(a: pydub.AudioSegment,
     from beat_chroma import extract_beat_chroma
     
     # Convert pydub AudioSegment to numpy array
-    a_samples = np.array(a.get_array_of_samples()).astype(np.float32)
-    b_samples = np.array(b.get_array_of_samples()).astype(np.float32)
+    a_samples = np.array(a.get_array_of_samples()).astype(np.float64)
+    b_samples = np.array(b.get_array_of_samples()).astype(np.float64)
 
     # Normalize audio samples to the range [-1, 1]
     a_samples /= np.iinfo(a.array_type).max
@@ -492,26 +492,48 @@ def shifting(x, y):
     shift = np.argmax(score)
     return np.roll(y,shift,axis=1)
 
+from concurrent.futures import ThreadPoolExecutor
+
 def chroma_shifting(original_features, cover_features):
-    max_score = -np.inf
-    best_shift = 0
-    best_matrix = []
-    best_s = []
-    best_shifted_cover = None
+    # Normalize + float32 only once
+    original_features = normalize_columns(original_features.astype(np.float32))
+    cover_features = normalize_columns(cover_features.astype(np.float32))
 
-    for shift in range(12):
+    def score_shift(shift):
         shifted = np.roll(cover_features, shift, axis=0)
-        s = similarity_matrix(original_features, shifted, norm=True)
-        d = smith_waterman(s,b=0.5, k=1)
-        score = np.sum(d)#np.max(d)
-        if score > max_score:
-            max_score = score
-            best_shift = shift
-            best_shifted_cover = shifted
-            best_matrix = d
-            best_s = s
+        s = similarity_matrix(original_features, shifted, norm=False)
+        d = smith_waterman(s, b=0.5, k=1)
+        score = np.sum(d)
+        return shift, score, shifted, s, d
 
-    return best_shifted_cover, best_s, best_matrix, max_score
+    with ThreadPoolExecutor() as executor:
+        results = list(executor.map(score_shift, range(12)))
+
+    best_shift, best_score, best_shifted, best_s, best_d = max(results, key=lambda x: x[1])
+    return best_shifted, best_s, best_d, best_score
+
+#def chroma_shifting(original_features, cover_features):
+#    max_score = -np.inf
+#    best_shift = 0
+#    best_matrix = []
+#    best_s = []
+#    best_shifted_cover = None
+#    original_features = normalize_columns(original_features)
+#    cover_features = normalize_columns(cover_features)
+
+#    for shift in range(12):
+#        shifted = np.roll(cover_features, shift, axis=0)
+#        s = similarity_matrix(original_features, shifted, norm=False)
+#        d = smith_waterman(s,b=0.5, k=1)
+#        score = np.sum(d)#np.max(d)
+#        if score > max_score:
+#            max_score = score
+#            best_shift = shift
+#            best_shifted_cover = shifted
+#            best_matrix = d
+#            best_s = s
+
+#    return best_shifted_cover, best_s, best_matrix, max_score
 
 ## Chroma extracting functions:
 def quantize_chroma(chroma):
