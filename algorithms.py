@@ -60,16 +60,16 @@ def compare(a: pydub.AudioSegment,
     sr_b = b.frame_rate
 
     # Compute chroma features for both audio signals (optimized for speed)
-    a_chroma = chroma_features(a_samples, sr_a, hop_time=50, n_fft=1024, variation="norm")
-    b_chroma = chroma_features(b_samples, sr_b, hop_time=50, n_fft=1024, variation="norm")
+    a_chroma = chroma_features(a_samples, sr_a, hop_time=100, n_fft=1024, variation="norm")
+    b_chroma = chroma_features(b_samples, sr_b, hop_time=100, n_fft=1024, variation="norm")
     print(f"get chroma features: {a_chroma.shape}, {b_chroma.shape}")
 
     # Compute similarity matrix
     S = similarity_matrix(a_chroma, b_chroma, norm=True)
-    D = smith_waterman(S, a=0, b=0.75, k=1, l=1,penalty="affine")
+    D = smith_waterman(S, a=0, b=0.5, k=1, l=1,penalty="affine")
 
     # The similarity score can be defined as the maximum value in the similarity matrix
-    similarity_score = np.max(D)
+    similarity_score = np.sum(D)#np.max(D)
 
     return similarity_score
 
@@ -123,7 +123,7 @@ def compare_beat_sync(a: pydub.AudioSegment,
 
     # Compute similarity matrix
     S = similarity_matrix(a_chroma, b_chroma, norm=True)
-    D = smith_waterman(S, a=0, b=0.75, k=1, l=1,penalty="affine")
+    D = smith_waterman(S, a=0, b=0.5, k=1, l=1,penalty="affine")
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -502,8 +502,8 @@ def chroma_shifting(original_features, cover_features):
     for shift in range(12):
         shifted = np.roll(cover_features, shift, axis=0)
         s = similarity_matrix(original_features, shifted, norm=True)
-        d = smith_waterman(s,b=0.75, k=1)
-        score = np.max(d)
+        d = smith_waterman(s,b=0.5, k=1)
+        score = np.sum(d)#np.max(d)
         if score > max_score:
             max_score = score
             best_shift = shift

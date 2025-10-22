@@ -50,7 +50,7 @@ def visualize_similarity_analysis(original_name, cover_name, original_chroma, co
     
     # 4. Dynamic programming matrix (D)
     im4 = axes[1,0].imshow(D, aspect='auto', cmap='plasma', origin='lower')
-    axes[1,0].set_title(f'DP Similarity Matrix (D)\nMax: {np.max(D):.3f}')
+    axes[1,0].set_title(f'DP Similarity Matrix (D)\nMax: {np.sum(D):.3f}') # np.max
     axes[1,0].set_ylabel('Original Frames')
     axes[1,0].set_xlabel('Cover Frames')
     plt.colorbar(im4, ax=axes[1,0], shrink=0.8)
@@ -171,7 +171,7 @@ def visualize_similarity_analysis(original_name, cover_name, original_chroma, co
     print(f"Cover shape: {cover_chroma.shape}")
     print(f"Similarity matrix shape: {S.shape}")
     print(f"Raw similarity max: {np.max(S):.6f}")
-    print(f"DP similarity max: {np.max(D):.6f}")
+    print(f"DP similarity max: {np.sum(D):.6f}") #np.max
     print(f"Improvement ratio: {np.max(D)/np.max(S):.2f}x")
     print(f"Best alignment at: Original frame {max_pos[0]}, Cover frame {max_pos[1]}")
     print(f"Frame-synchronous analysis: Using fixed-time windows")
