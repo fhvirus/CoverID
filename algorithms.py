@@ -500,7 +500,7 @@ def chroma_shifting(original_features, cover_features):
     best_shifted_cover = None
 
     for shift in range(12):
-        shifted = np.roll(cover_features, shift)
+        shifted = np.roll(cover_features, shift, axis=0)
         s = similarity_matrix(original_features, shifted, norm=True)
         d = smith_waterman(s,b=0.75, k=1)
         score = np.max(d)
