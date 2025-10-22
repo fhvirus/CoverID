@@ -413,3 +413,63 @@ def accuracy_score(truth_list: list[str], matched_dict: dict, k: int = 5) -> flo
                         break
     
     return correct / len(truth_list) if len(truth_list) > 0 else 0.0
+
+def match_all_songs_features_fast(database: dict[str, pydub.AudioSegment],
+                    covers: dict[str, pydub.AudioSegment],
+                    ) -> tuple[list[str], dict]:
+
+    def get_chroma_feature(sample):
+        sample = sample.set_channels(1) if sample.channels > 1 else sample
+        sr, sw = sample.frame_rate, 2 ** (sample.sample_width * 8 - 1)
+        sample = np.array(sample.get_array_of_samples()).astype(np.float32) / sw
+        return chroma_features(sample, sr, hop_time=200, n_fft=2048, variation="norm")
+
+    print('Computing features dataset...')
+    features_list = {}
+    for name, data in tqdm(database.items()):
+        features = get_chroma_feature(data)
+        features_list[name] = features
+
+    truth_list = []
+    matched_dict = {}
+
+    print('Matching covers to original songs...')
+    for i, (name, cover) in enumerate(tqdm(covers.items())):
+        if i >= 75:
+            break
+
+        truth_list.append(name)
+        cover_chroma = get_chroma_feature(cover)
+
+        print(f"\n=== MATCHING {i+1}: {name} ===")
+
+        matched_score = {}
+        for db_name, db_features in features_list.items():
+            score = compare_features(db_features, cover_chroma)
+            matched_score[db_name] = score
+            print(f"Checking {db_name} vs {name}: score = {score:.3f}")
+            
+        # Visualize only correct match and final chosen match
+        print(f"\n*** CORRECT MATCH: {name} (score: {matched_score[name]:.3f}) ***")
+        # visualize_similarity_analysis(name, name, features_list[name], cover_chroma, save_plots=True)
+
+        score_list = sorted(((v, k) for k, v in matched_score.items()), reverse=True)
+        best_score, best_name = score_list[0]
+        if best_name != name:
+            print(f"*** ALGORITHM CHOSE: {best_name} (score: {best_score:.3f}) ***")
+            # visualize_similarity_analysis(best_name, name, features_list[best_name], cover_chroma, save_plots=True)
+        else:
+            print(f"*** ALGORITHM CORRECTLY CHOSE: {best_name} ***")
+        
+        # Get top 5 matches for debugging
+        top5_matches = {}
+        rankings = ["first", "second", "third", "fourth", "fifth"]
+        for j, (score_j, name_j) in enumerate(score_list[:len(rankings)]):
+            top5_matches[rankings[j]] = {"name": name_j, "score": score_j}
+        matched_dict[name] = top5_matches
+            
+        print("="*60)
+        
+        print(f"Cover song: {name}. Matched song: {best_name}")
+
+    return truth_list, matched_dict

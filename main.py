@@ -1,4 +1,4 @@
-from utils import load_covers80, match_all_songs, match_all_songs_features, accuracy_score
+from utils import load_covers80, match_all_songs, match_all_songs_features, match_all_songs_features_fast, accuracy_score
 from beat_chroma import match_all_songs_features_beat_sync
 from algorithms import dummy_compare, compare, compare_beat_sync
 
@@ -37,7 +37,8 @@ if __name__ == '__main__':
     else:
         print("=== USING FRAME-SYNCHRONOUS CHROMA FEATURES ===")
         # Run evaluation with frame-synchronous features and get top 5 matches
-        truth_list, matched_dict = match_all_songs_features(ver_A, ver_B, debug_mode=True, transpose=False)
+        # truth_list, matched_dict = match_all_songs_features(ver_A, ver_B, debug_mode=True, transpose=False)
+        truth_list, matched_dict = match_all_songs_features_fast(ver_A, ver_B)
 
         # Calculate different accuracy metrics
         top1_accuracy = accuracy_score(truth_list, matched_dict, k=1)
