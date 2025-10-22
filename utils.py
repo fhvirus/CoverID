@@ -20,9 +20,9 @@ def visualize_similarity_analysis(original_name, cover_name, original_chroma, co
     from algorithms import similarity_matrix, D_matrix, smith_waterman
     
     # Compute similarity matrices
-    S = similarity_matrix(original_chroma, cover_chroma, norm= True)  # Raw dot product
-    D = smith_waterman(S, a=0.5, b=0.5, k=1, l=1,penalty="affine")  # Dynamic programming matrix
-    
+    #S = similarity_matrix(original_chroma, cover_chroma, norm= True)  # Raw dot product
+    #D = smith_waterman(S, a=0, b=0.75, k=1, l=1,penalty="affine")  # Dynamic programming matrix
+    cover_chroma, S, D, max_val= chroma_shifting(original_chroma, cover_chroma)
     # Create subplot layout
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     fig.suptitle(f'Similarity Analysis: {original_name} vs {cover_name}', fontsize=16)
@@ -252,10 +252,10 @@ def match_one_song_features(features_list,
         # Get the sample rates
         sr_song = song.frame_rate
         # Compute chroma features
-        song_chroma_no_shift = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
+        song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
         if transpose:
             song_chroma=transpose_chroma(song_chroma_no_shift)
-        song_chroma = chroma_shifting(features, song_chroma_no_shift)
+        
         score = compare_features(features, song_chroma)
         results.append((score, name))
     
@@ -332,11 +332,11 @@ def match_all_songs_features(database: dict[str, pydub.AudioSegment],
                 sr_song = song.frame_rate
                 
                 # Use original chroma features for better visualization detail
-                song_chroma_no_shift = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
+                song_chroma = chroma_features(song_samples, sr_song, hop_time=100, n_fft=2048, variation="norm")
                 if transpose:
                     song_chroma=transpose_chroma(song_chroma_no_shift)
                 # Compute similarity
-                song_chroma = chroma_shifting(features, song_chroma_no_shift)
+                #song_chroma = chroma_shifting(features, song_chroma_no_shift)
                 score = compare_features(db_features, song_chroma)
                 print(f"Checking {db_name} vs {name}: score = {score:.3f}")
                 

@@ -66,7 +66,7 @@ def compare(a: pydub.AudioSegment,
 
     # Compute similarity matrix
     S = similarity_matrix(a_chroma, b_chroma, norm=True)
-    D = smith_waterman(S, a=0.5, b=0.5, k=1, l=1,penalty="affine")
+    D = smith_waterman(S, a=0, b=0.75, k=1, l=1,penalty="affine")
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -78,11 +78,12 @@ def compare_features(og_features,
     """Given two audio, returns their similarity"""
 
     # Compute similarity matrix
-    S = similarity_matrix(og_features, cover_features, norm=True)
-    D = smith_waterman(S, a=0.5, b=0.5, k=1, l=1,penalty="affine")
+    song_chroma, S, D, similarity_score = chroma_shifting(og_features, cover_features)
+    #S = similarity_matrix(og_features, cover_features, norm=True)
+    #D = smith_waterman(S, a=0, b=0.5, k=1, l=1,penalty="affine")
 
     # The similarity score can be defined as the maximum value in the similarity matrix
-    similarity_score = np.max(D)
+    #similarity_score = np.max(D)
     #print(f"Similarity score: {similarity_score}")
 
     return similarity_score
@@ -122,7 +123,7 @@ def compare_beat_sync(a: pydub.AudioSegment,
 
     # Compute similarity matrix
     S = similarity_matrix(a_chroma, b_chroma, norm=True)
-    D = smith_waterman(S, a=0.5, b=0.5, k=1, l=1,penalty="affine")
+    D = smith_waterman(S, a=0, b=0.75, k=1, l=1,penalty="affine")
 
     # The similarity score can be defined as the maximum value in the similarity matrix
     similarity_score = np.max(D)
@@ -156,10 +157,9 @@ def chroma_features(x: np.ndarray, sr: int, hop_time:int=10, n_fft:int=2048, var
         # chroma_cqt doesn't use n_fft parameter
         features = librosa.feature.chroma_cqt(y=x, sr=sr, hop_length=hop_length) # Revise and change parameters
     elif variation == "cens":
-        # todo
-        features_no_dw = librosa.feature.chroma_cens(y=x, sr=sr, hop_length=hop_length, win_len_smooth = l) #, l=l, d=d) # Revise and change parameters
-        # Downsampling as librosa does not implement it:
-        features = features_no_dw[:, ::d]    
+        chroma = librosa.feature.chroma_cqt(y=x, sr=sr, hop_length=hop_length)
+        chroma = chroma / np.max(chroma)
+        features = compute_cens(chroma, l=11, d=3)    
     else:
         raise ValueError(f"Invalid variation '{variation}'. Must be one of ['none', 'norm', 'cens']")
     return features
@@ -495,16 +495,68 @@ def shifting(x, y):
 def chroma_shifting(original_features, cover_features):
     max_score = -np.inf
     best_shift = 0
+    best_matrix = []
+    best_s = []
     best_shifted_cover = None
 
     for shift in range(12):
         shifted = np.roll(cover_features, shift)
-        corr = correlate2d(original_features, shifted, mode='valid')
-
-        score = np.max(corr)
+        s = similarity_matrix(original_features, shifted, norm=True)
+        d = smith_waterman(s,b=0.75, k=1)
+        score = np.max(d)
         if score > max_score:
             max_score = score
             best_shift = shift
             best_shifted_cover = shifted
+            best_matrix = d
+            best_s = s
 
-    return best_shifted_cover
+    return best_shifted_cover, best_s, best_matrix, max_score
+
+## Chroma extracting functions:
+def quantize_chroma(chroma):
+    """
+    Quantization based on Müller's book
+    """
+    q = np.zeros_like(chroma, dtype=int)
+
+    thresholds = [0.05, 0.1, 0.2, 0.4]  # Log-like thresholds
+    for i, thresh in enumerate(thresholds, start=1):
+        q[chroma >= thresh] = i
+
+    return q
+
+def smooth_downsample_normalize(q_chroma, l, d):
+    """
+    Suavitza cada fila (component chroma) amb una finestra de longitud l (Hann).
+    """
+    # Smoothing:
+    window = np.hanning(l)
+    window /= window.sum()  # normalitzar
+
+    smoothed = np.zeros_like(q_chroma, dtype=float)
+    for i in range(12):
+        smoothed[i] = np.convolve(q_chroma[i], window, mode='same')
+    # Downsampling
+    downsampled = smoothed[:, ::d]
+    # Normalization
+    norms = np.linalg.norm(downsampled, axis=0, keepdims=True)
+    norms[norms == 0] = 1  # evitar divisions per zero
+    normalized = downsampled / norms
+    return normalized
+
+def compute_cens(chroma, l=41, d=10):
+    """
+    Compute CENS features from chroma features
+    
+    Parameters:
+        chroma: np.ndarray (12, T)
+        l: int, smoothing window size (in frames)
+        d: int, downsampling factor
+
+    Returns:
+        cens_features: np.ndarray (12, T//d)
+    """
+    q = quantize_chroma(chroma)
+    cens_features = smooth_downsample_normalize(q,l,d)
+    return cens_features
