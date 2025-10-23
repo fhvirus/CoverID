@@ -185,6 +185,8 @@ def load_covers80(datadir: str):
 
     LIST1_PATH = 'list1.list'
     LIST2_PATH = 'list2.list'
+    # LIST1_PATH = 'list1.small'
+    # LIST2_PATH = 'list2.small'
 
     try:
         with open(os.path.join(datadir, LIST1_PATH), 'r') as f:
@@ -430,7 +432,7 @@ def chroma_feature_by_beat(sample):
 
 def match_all_songs_features_fast(database: dict[str, pydub.AudioSegment],
                     covers: dict[str, pydub.AudioSegment],
-                    ) -> tuple[list[str], dict]:
+                    ) -> tuple[list[str], dict, dict]:
 
     def get_chroma_feature(sample):
         sample = sample.set_channels(1) if sample.channels > 1 else sample
@@ -446,11 +448,12 @@ def match_all_songs_features_fast(database: dict[str, pydub.AudioSegment],
 
     truth_list = []
     matched_dict = {}
+    score_dict = {}
 
     print('Matching covers to original songs...')
     for i, (name, cover) in enumerate(tqdm(covers.items())):
-        if i >= 75:
-            break
+        # if i >= 75:
+        #     break
 
         truth_list.append(name)
         cover_chroma = get_chroma_feature(cover)
@@ -481,12 +484,41 @@ def match_all_songs_features_fast(database: dict[str, pydub.AudioSegment],
         for j, (score_j, name_j) in enumerate(score_list[:len(rankings)]):
             top5_matches[rankings[j]] = {"name": name_j, "score": score_j}
         matched_dict[name] = top5_matches
+        score_dict[name] = matched_score
             
         print("="*60)
         
         print(f"Cover song: {name}. Matched song: {best_name}")
 
-    return truth_list, matched_dict
+    return truth_list, matched_dict, score_dict
+
+def visualize_normalized_matched_scores(truth_list: list[str], score_dict: dict[str, dict[str, float]]):
+    N = len(truth_list)
+    score_matrix = np.zeros((N, N))
+    for i, name_i in enumerate(truth_list):
+        for j, name_j in enumerate(truth_list):
+            score_matrix[i][j] = score_dict[name_i][name_j]
+
+    avg, std = np.average(score_matrix, axis=1, keepdims=True), np.std(score_matrix, axis=1, keepdims=True)
+    score_matrix = (score_matrix - avg) / std
+
+    print(score_matrix.tolist())
+
+    plt.imshow(score_matrix, interpolation='nearest', cmap='GnBu')
+
+    plt.tick_params(axis='y', labelsize=8)
+    plt.tick_params(axis='x', labelsize=6)
+    plt.xticks(np.arange(N), truth_list, rotation=45, ha='right')
+    plt.yticks(np.arange(N), truth_list)
+
+    max_cols = np.argmax(score_matrix, axis=1)
+    rows = np.arange(score_matrix.shape[0])
+    color = np.array(['red', 'lime'])[(max_cols == rows).astype(int)]
+    plt.scatter(max_cols, rows, color=color, s=20)
+
+    plt.savefig('score_matrix.png', dpi=300, bbox_inches='tight')
+
+
 
 def match_all_songs_features_beat(database: dict[str, pydub.AudioSegment],
                     covers: dict[str, pydub.AudioSegment],
