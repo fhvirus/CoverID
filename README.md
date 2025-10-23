@@ -1,5 +1,8 @@
 # DT2470-HT25-Final-Project
-Add some description about the project later.
+
+A version identification system of covers80 dataset [1] based on chroma feature and Smith-Waterman algorithm.
+
+This is a final project of Music Informatics (DT2470 HT25) course at KTH.
 
 ## Environment
 
@@ -63,6 +66,3 @@ and 0 otherwise.
 
 [1] D. P. W. Ellis (2007). The "covers80" cover song data set.
     Web resource, available: http://labrosa.ee.columbia.edu/projects/coversongs/covers80/. 
-
-## License
-Add a license (or not) later.
