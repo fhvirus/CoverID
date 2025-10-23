@@ -10,8 +10,7 @@ Please install python dependencies by the following command:
 pip install -r requirements.txt
 ```
 
-This project uses [covers80](http://labrosa.ee.columbia.edu/projects/coversongs/covers80/) [1] dataset.
-Please download and extract the dataset.
+This project uses [covers80](http://labrosa.ee.columbia.edu/projects/coversongs/covers80/) [1] dataset. Please download and extract the dataset.
 
 ```bash
 wget http://labrosa.ee.columbia.edu/projects/coversongs/covers80/covers80.tgz
@@ -30,6 +29,8 @@ sudo apt install ffmpeg=7:6.1.1-3ubuntu5
 - `algorithms.py`: File for matching algorithms.
 - `utils.py`: Functions for loading data and other useful functions.
 - `main.py`: File for main logic.
+- `figures/`: Figures for report.
+- `score_matrix/`: Code and visualization of the matched score of each song.
 
 Other files are for experimental purposes and might not be of use.
 
