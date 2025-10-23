@@ -17,7 +17,9 @@ Please download and extract the dataset.
 wget http://labrosa.ee.columbia.edu/projects/coversongs/covers80/covers80.tgz
 tar -xvzf covers80.tgz
 ```
+
 ffmpeg packet is needed in order to run this project. Install with:
+
 ```bash
 sudo apt update
 sudo apt install ffmpeg=7:6.1.1-3ubuntu5
@@ -29,7 +31,19 @@ sudo apt install ffmpeg=7:6.1.1-3ubuntu5
 - `utils.py`: Functions for loading data and other useful functions.
 - `main.py`: File for main logic.
 
-To add a algorithm, place it in algorithms and change the compare function that `main.py` uses.
+Other files are for experimental purposes and might not be of use.
+
+## Result
+
+Result of matched scores of the first 25 songs are as follows.
+The score are standardized per row.
+Green dots shows correct matches, while red dots shows incorrect ones.
+
+![Score matrix for first 25 songs](/score_matrix/score_matrix_25.png)
+
+Result of matched scores of all songs in `covers80` dataset:
+
+![Score matrix for all songs](/score_matrix/score_matrix_80.png)
 
 
 ## Reference

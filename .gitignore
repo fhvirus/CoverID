@@ -2,6 +2,9 @@
 covers80.tgz
 coversongs/
 
+# just my stuff
+my.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
