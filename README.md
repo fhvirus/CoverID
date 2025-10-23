@@ -1,4 +1,4 @@
-# DT2470-HT25-Final-Project
+# CoverID: Version Identification Algorithm Based on Chroma Feature
 
 A version identification system of covers80 dataset [1] based on chroma feature and Smith-Waterman algorithm.
 
