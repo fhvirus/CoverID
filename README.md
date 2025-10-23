@@ -45,6 +45,18 @@ Result of matched scores of all songs in `covers80` dataset:
 
 ![Score matrix for all songs](/score_matrix/score_matrix_80.png)
 
+The accurarcy is:
+
+```
+Top-1 Accuracy: 0.537
+Top-3 Accuracy: 0.552
+Top-5 Accuracy: 0.560
+```
+
+Top-k accuracy is calculated as sum of weight for each match divided by the number of songs,
+where weight is $1/x$ if the correct match is within the first $k$ largest score and has rank $x$,
+and 0 otherwise.
+
 
 ## Reference
 
