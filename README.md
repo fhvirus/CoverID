@@ -27,6 +27,14 @@ sudo apt update
 sudo apt install ffmpeg=7:6.1.1-3ubuntu5
 ```
 
+## Execution
+
+After setting up the environment and dataset, simply run:
+
+```
+python main.py
+```
+
 ## File Structure
 
 - `algorithms.py`: File for matching algorithms.
@@ -52,9 +60,9 @@ Result of matched scores of all songs in `covers80` dataset:
 The accurarcy is:
 
 ```
-Top-1 Accuracy: 0.537
-Top-3 Accuracy: 0.552
-Top-5 Accuracy: 0.560
+Top-1 Accuracy: 0.533
+Top-3 Accuracy: 0.549
+Top-5 Accuracy: 0.557
 ```
 
 Top-k accuracy is calculated as sum of weight for each match divided by the number of songs,
