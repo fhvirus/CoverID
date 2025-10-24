@@ -1,6 +1,6 @@
-# CoverID: Version Identification Algorithm Based on Chroma Feature
+# CoverID: A Version Identification Algorithm
 
-A version identification system of covers80 dataset [1] based on chroma feature and Smith-Waterman algorithm.
+CoverID is a version identification system of covers80 dataset [1] based on chroma feature and Smith-Waterman algorithm.
 
 This is a final project of Music Informatics (DT2470 HT25) course at KTH.
 
